@@ -1,0 +1,2 @@
+class StreamStatsError(Exception):
+    pass
