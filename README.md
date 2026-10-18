@@ -14,6 +14,14 @@ python -m streamstats analyze data.jsonl --format jsonl --skip-invalid
 
 Формат либо определяется по расширению, либо задается через `--format`.
 
+В конце можно добавить фильтры по уровню/источнику/времени событий, которые вы хотите исключить из отчета.
+
+Время: --since (ISO 8601) --until (ISO 8601)
+
+Источник: --source SOURCE
+
+Уровень: --level {...}
+
 # Формат события
 Поля: `timestamp` (ISO 8601), `level` (DEBUG, INFO, WARNING, ERROR, CRITICAL),
 `source` (непустая строка), `message` (строка).
