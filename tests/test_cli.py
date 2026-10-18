@@ -55,3 +55,13 @@ def test_cli_missing_file(tmp_path):
     with pytest.raises(SystemExit) as info:
         main(["analyze", str(tmp_path / "нет.csv")])
     assert info.value.code == 2
+
+
+def test_cli_csv_report(tmp_path):
+    p = tmp_path / "a.jsonl"
+    p.write_text(LINE * 2, encoding="utf-8")
+    out = tmp_path / "r.csv"
+    assert main(["analyze", str(p), "--output", str(out)]) == 0
+    text = out.read_text(encoding="utf-8-sig")
+    assert "summary,total_events,2" in text
+    assert "top_error_sources,бд,2" in text

@@ -1,6 +1,6 @@
 # streamstats
 
-Консольная утилита: читает события из файлов `.csv` и `.jsonl` и строит статистический отчет в '.json'.
+Консольная утилита: читает события из файлов `.csv` и `.jsonl` и строит статистический отчет в `.json` и `.csv`.
 
 # Установка
 pip install -e .
@@ -19,5 +19,3 @@ python -m streamstats analyze data.jsonl --format jsonl --skip-invalid
 `source` (непустая строка), `message` (строка).
 
 Timestamp без часового пояса считается UTC.
-
-# Extra
