@@ -55,3 +55,19 @@ def test_cli_missing_file(tmp_path):
     with pytest.raises(SystemExit) as info:
         main(["analyze", str(tmp_path / "нет.csv")])
     assert info.value.code == 2
+
+
+def test_cli_level_filter(tmp_path):
+    p = tmp_path / "a.jsonl"
+    p.write_text(LINE + LINE.replace("ERROR", "INFO"), encoding="utf-8")
+    out = tmp_path / "r.json"
+    assert main(["analyze", str(p), "--level", "error", "--output", str(out)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["total_events"] == 1
+
+
+def test_cli_bad_since(tmp_path):
+    p = tmp_path / "a.jsonl"
+    p.write_text(LINE, encoding="utf-8")
+    with pytest.raises(SystemExit) as info:
+        main(["analyze", str(p), "--since", "вчера"])
+    assert info.value.code == 2

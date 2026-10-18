@@ -26,3 +26,27 @@ class Stats:
     def top_error_sources(self, n=5):
         """Топ-5 источников ошибок по убыванию, при равенстве - по имени."""
         return self.error_sources.most_common(n)
+
+
+def filter_level(events, levels):
+    """Пропускать только события с уровнем из levels."""
+    for event in events:
+        if event.level in levels:
+            yield event
+
+
+def filter_source(events, sources):
+    """Пропускать только события с источником из sources."""
+    for event in events:
+        if event.source in sources:
+            yield event
+
+
+def filter_time(events, since=None, until=None):
+    """Пропускать только события в интервале [since, until]."""
+    for event in events:
+        if since is not None and event.timestamp < since:
+            continue
+        if until is not None and event.timestamp > until:
+            continue
+        yield event

@@ -1,5 +1,29 @@
-from streamstats.analysis import Stats
-from streamstats.models import parse_event
+from streamstats.analysis import Stats, filter_level, filter_source, filter_time
+from streamstats.models import parse_event, parse_timestamp
+
+
+def test_filter_level():
+    events = [ev("INFO", "a"), ev("ERROR", "b")]
+    assert [e.source for e in filter_level(events, {"ERROR"})] == ["b"]
+
+
+def test_filter_source():
+    events = [ev("INFO", "a"), ev("INFO", "b")]
+    assert [e.source for e in filter_source(events, {"a"})] == ["a"]
+
+
+def test_filter_time():
+    events = [ev("INFO", "a", "2024-05-01T00:00:00Z"), ev("INFO", "b", "2024-05-03T00:00:00Z")]
+    result = list(filter_time(events, since=parse_timestamp("2024-05-02T00:00:00Z")))
+    assert [e.source for e in result] == ["b"]
+
+
+def test_filters_are_lazy():
+    def gen():
+        yield ev("INFO", "a")
+        raise AssertionError("прочитано больше, чем нужно")
+
+    assert next(filter_level(gen(), {"INFO"})).source == "a"
 
 
 def ev(level, source, ts="2024-05-01T12:00:00Z"):

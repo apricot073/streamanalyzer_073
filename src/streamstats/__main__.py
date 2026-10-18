@@ -3,8 +3,9 @@ import logging
 import sys
 from pathlib import Path
 
-from .analysis import Stats
-from .errors import CLIConfigError, InvalidEventError, StreamStatsError
+from .analysis import Stats, filter_level, filter_source, filter_time
+from .errors import CLIConfigError, InvalidEventError, InvalidTimestampError, StreamStatsError
+from .models import Level, parse_timestamp
 from .parsers import SkipCounter, iter_events
 from .report import build_report, write_report
 
@@ -43,8 +44,29 @@ def build_parser():
         action="store_true",
         help="пропускать некорректные строки вместо остановки",
     )
+    analyze_parser.add_argument(
+        "--level", action="append", type=str.upper,
+        choices=[level.value for level in Level],
+        help="учитывать только события этого уровня (можно несколько раз)",
+    )
+    analyze_parser.add_argument(
+        "--source", action="append",
+        help="учитывать только события этого источника (можно несколько раз)",
+    )
+    analyze_parser.add_argument("--since", help="не раньше этой метки (ISO 8601)")
+    analyze_parser.add_argument("--until", help="не позже этой метки (ISO 8601)")
 
     return parser
+
+
+def parse_time_arg(value, option):
+    if value is None:
+        return None
+    try:
+        return parse_timestamp(value)
+    except InvalidTimestampError as e:
+        raise CLIConfigError(f"{option}: {e}") from e
+
 
 def detect_format(path, explicit):
     if explicit is not None:
@@ -58,16 +80,26 @@ def detect_format(path, explicit):
 
 
 def run_analyze(args):
+    since = parse_time_arg(args.since, "--since")
+    until = parse_time_arg(args.until, "--until")
     total = Stats()
     for path in args.inputs:
         fmt = detect_format(path, args.format)
         skipped = SkipCounter()
         try:
-            for event in iter_events(path, fmt, args.skip_invalid, skipped):
+            events = iter_events(path, fmt, args.skip_invalid, skipped)
+            if args.level:
+                events = filter_level(events, set(args.level))
+            if args.source:
+                events = filter_source(events, set(args.source))
+            if since is not None or until is not None:
+                events = filter_time(events, since, until)
+            for event in events:
                 total.add(event)
         except UnicodeDecodeError as exc:
             raise InvalidEventError(f"{path}: файл не в кодировке UTF-8 ({exc.reason})") from exc
         total.skipped += skipped.count
+
     write_report(build_report(total, args.inputs), args.outfile)
 
 
