@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 import csv
 import json
 import logging
 
-from errors import InvalidEventError, UnsupportedFormatError
-from models import parse_event
+from .errors import InvalidEventError, UnsupportedFormatError
+from .models import parse_event
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +80,7 @@ def iter_events(path: str, fmt: str, skip_invalid: bool = False, skipped: SkipCo
         try:
             event = parse_event(to_mapping(raw))
         except InvalidEventError as exc:
-            exc.path = str(path)
+            exc.path = path
             exc.line_no = line_no
             if skip_invalid:
                 logger.warning("пропущена строка: %s", exc)

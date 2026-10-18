@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
 
-from errors import InvalidEventError, InvalidTimestampError
+from .errors import InvalidEventError, InvalidTimestampError
 
 
 class Level(StrEnum):
@@ -18,7 +17,7 @@ class Level(StrEnum):
         return self in (Level.ERROR, Level.CRITICAL)
 
 class Event:
-    __slots__ = ("timestamp", "level", "source", "message")
+    __slots__ = ("level", "message", "source", "timestamp")
 
     def __init__(self, timestamp: datetime, level: Level, source: str, message: str):
         self.timestamp = timestamp
@@ -31,21 +30,16 @@ class Event:
                 f"source={self.source!r}, message={self.message!r})")
 
 
-def parse_timestamp(value: Any) -> datetime:
-    """Разобрать ISO 8601 и вернуть datetime (UTC по умолчанию)."""
-
-    vs = value.strip()
-
-    if not isinstance(value, str) or not vs:
+def parse_timestamp(value):
+    """Разобрать ISO 8601 и вернуть datetime (UTC, если пояса нет)."""
+    if not isinstance(value, str) or not value.strip():
         raise InvalidTimestampError(f"неверная временная метка: {value!r}")
     try:
-        ts = datetime.fromisoformat(vs)
+        ts = datetime.fromisoformat(value.strip())
     except ValueError as exc:
-        raise InvalidTimestampError(
-            f"неверная временная метка: {value!r}"
-        ) from exc
+        raise InvalidTimestampError(f"неверная временная метка: {value!r}") from exc
     if ts.tzinfo is None:
-        ts.replace(tzinfo=UTC)
+        ts = ts.replace(tzinfo=UTC)
     return ts
 
 

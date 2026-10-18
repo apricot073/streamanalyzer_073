@@ -1,57 +1,86 @@
-from __future__ import annotations
-
 import argparse
+import logging
 import sys
+from pathlib import Path
 
-from streamstats.errors import StreamStatsError
+from .analysis import Stats
+from .errors import CLIConfigError, InvalidEventError, StreamStatsError
+from .parsers import SkipCounter, iter_events
+from .report import build_report, write_report
+
+EXTENSIONS = {".csv": "csv", ".jsonl": "jsonl"}
 
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="streamstats",
-        description="Console utility: stream analyzer",
+        description="Потоковый анализатор файлов событий",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     analyze_parser = subparsers.add_parser(
         "analyze",
-        help="TBA",
-        description="TBA",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        help="построить статистический отчёт",
     )
     analyze_parser.add_argument(
-        "INPUT",
-        help='TBA',
+        "inputs",
+        nargs="+",
+        metavar="INPUT",
+        help='входные файлы',
     )
-
-    convert_parser = subparsers.add_parser(
-        "convert",
-        help="Convert a value between units",
-        description="Groups: length (mm, cm, m, km), mass (g, kg), temperature (c, f, k).",
-    )
-    convert_parser.add_argument(
+    analyze_parser.add_argument(
         "--format",
-        dest="format",
-        required=True,
-        help="TBA",
+        choices=["csv", "jsonl"],
+        help="формат входных файлов (определяется по расширению)",
     )
-    convert_parser.add_argument(
+    analyze_parser.add_argument(
         "--output",
         dest="outfile",
-        required=True,
-        help="TBA",
+        metavar="REPORT.json",
+        help="куда записать отчёт (по умолчанию stdout)",
+    )
+    analyze_parser.add_argument(
+        "--skip-invalid",
+        action="store_true",
+        help="пропускать некорректные строки вместо остановки",
     )
 
     return parser
 
+def detect_format(path, explicit):
+    if explicit is not None:
+        return explicit
+    fmt = EXTENSIONS.get(Path(path).suffix.lower())
+    if fmt is None:
+        raise CLIConfigError(
+            f"{path}: не удалось определить формат по расширению, укажите --format"
+        )
+    return fmt
+
+
+def run_analyze(args):
+    total = Stats()
+    for path in args.inputs:
+        fmt = detect_format(path, args.format)
+        skipped = SkipCounter()
+        try:
+            for event in iter_events(path, fmt, args.skip_invalid, skipped):
+                total.add(event)
+        except UnicodeDecodeError as exc:
+            raise InvalidEventError(f"{path}: файл не в кодировке UTF-8 ({exc.reason})") from exc
+        total.skipped += skipped.count
+    write_report(build_report(total, args.inputs), args.outfile)
+
 
 def main(argv: list[str]):
-    parser = build_parser()
-    args = parser.parse_args(argv)
+    args = build_parser().parse_args(argv)
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
     try:
-        if args.command == "analyze":
-            pass
+        run_analyze(args)
     except StreamStatsError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"Ошибка: {e}", file=sys.stderr)
+        sys.exit(2)
+    except OSError as e:
+        print(f"Ошибка файла: {e}", file=sys.stderr)
         sys.exit(2)
     else:
         return 0

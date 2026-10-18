@@ -1,11 +1,23 @@
 # streamstats
 
-This is a CLI stream analyzer. Further information is TBA.
+Консольная утилита: читает события из файлов `.csv` и `.jsonl` и строит статистический отчет в '.json'.
 
-# installing
+# Установка
+pip install -e .
 
-# usage
-*python -m streamstats analyze INPUT [INPUT ...] --format csv | jsonl --output REPORT.json*
-*python -m streamstats analyze INPUT --format jsonl --skip-invalid*
+pip install pytest ruff
 
-# extra
+# Использование
+python -m streamstats analyze a.csv b.jsonl --output report.json
+
+python -m streamstats analyze data.jsonl --format jsonl --skip-invalid
+
+Формат либо определяется по расширению, либо задается через `--format`.
+
+# Формат события
+Поля: `timestamp` (ISO 8601), `level` (DEBUG, INFO, WARNING, ERROR, CRITICAL),
+`source` (непустая строка), `message` (строка).
+
+Timestamp без часового пояса считается UTC.
+
+# Extra
